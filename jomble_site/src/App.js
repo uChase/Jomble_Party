@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import io from 'socket.io-client';
+import React, { useState, useEffect } from 'react';
 
 let socket;
 
@@ -11,36 +10,57 @@ function App() {
     const [players, setPlayers] = useState([]);
     const [error, setError] = useState('');
 
+    useEffect(() => {
+        return () => {
+            if (socket) {
+                socket.close();
+            }
+        };
+    }, []);
+
     const joinSession = () => {
-        //This has to update with ip for now
-        socket = io('http://192.168.68.93:8080');
+        socket = new WebSocket('ws://192.168.68.93:8080');
 
-        socket.emit('join', sessionId);
+        socket.onopen = () => {
+            console.log('WebSocket connection opened');
+            setConnected(true);
+            socket.send(JSON.stringify({ action: 'join', sessionId }));
+        };
 
-        socket.on('update', (session) => {
-            setPlayers(session.players);
-        });
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            switch (data.action) {
+                case 'player':
+                    setPlayers(data.state);
+                    console.log(data.state)
+                    break;
+                case 'message':
+                    setMessages((prevMessages) => [...prevMessages, data.message]);
+                    break;
+                case 'error':
+                    setError(data.error);
+                    socket.close();
+                    break;
+                default:
+                    console.error('Unknown action:', data.action);
+            }
+        };
 
-        socket.on('message', (newMessage) => {
-            setMessages((prevMessages) => [...prevMessages, newMessage]);
-        });
+        socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            setError('WebSocket error');
+        };
 
-        socket.on('error', (errMsg) => {
-            setError(errMsg);
-            socket.disconnect();
-        });
-
-        socket.on('disconnect', () => {
+        socket.onclose = () => {
+            console.log('WebSocket connection closed');
             setConnected(false);
             setError('Disconnected from server');
-        });
-
-        setConnected(true);
+        };
     };
 
     const sendMessage = () => {
         if (message) {
-            socket.emit('message', { sessionId, message });
+            socket.send(JSON.stringify({ action: 'message', sessionId, payload: message }));
             setMessage('');
         }
     };
