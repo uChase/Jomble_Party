@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import io from 'socket.io-client';
-import './App.css';
 
 let socket;
 
@@ -13,7 +12,8 @@ function App() {
     const [error, setError] = useState('');
 
     const joinSession = () => {
-        socket = io('http://localhost:8080');
+        //This has to update with ip for now
+        socket = io('http://192.168.68.93:8080');
 
         socket.emit('join', sessionId);
 

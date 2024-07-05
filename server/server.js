@@ -9,7 +9,7 @@ app.use(cors());
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
@@ -19,6 +19,11 @@ const gameSessions = {
         players: [],
         state: {}
     } // Example session for testing
+    ,
+    'penis': {
+        players: [],
+        state: {}
+    }
 };
 
 io.on('connection', (socket) => {
@@ -54,6 +59,6 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(8080, () => {
-    console.log('Server is listening on port 8080');
+server.listen(8080, '0.0.0.0', () => {
+  console.log('Server running at http://0.0.0.0:8080/');
 });
