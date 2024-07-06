@@ -4,34 +4,42 @@ const { check_controller_token } = require('./check_tokens');
 
 function init_connection_player(ws, sessionId, clientId, session)
 {
-    console.log('New connection');
     if (session === undefined){
         console.log(`Session ${sessionId} not found`);
-        ws.send(JSON.stringify({action: 'error', error: 'Session not found'}));
+        ws.send(JSON.stringify({action: 'error', payload: 'Session not found'}));
         ws.close();
-        return;
+        return false;
     }
-    if (checkReconnectionPlayer(ws, sessionId, clientId, session)){
-        return;
+    if(session.started){
+        if (checkReconnectionPlayer(ws, sessionId, clientId, session) == "recconnected"){
+            return true;
+        } else if (checkReconnectionPlayer(ws, sessionId, clientId, session) == "error"){
+            return false;
+        }
     }
     clientId = uuidv4();
+    ws.id = clientId;
     session.clients[clientId] = {ws: ws};
-    ws.send(JSON.stringify({action: 'connected', clientId: clientId}));
+    console.log("Client connected at " + sessionId + " with id " + clientId)
+    ws.send(JSON.stringify({action: 'connected', payload: [clientId, sessionId]}));
+    return true
 }
 
 function checkReconnectionPlayer(ws, sessionId, clientId, session){
     if (clientId != '' && session.clients[clientId] !== undefined && session.clients[clientId].ws.readyState === ws.CLOSED){
         console.log(`Client ${clientId} reconnected`);
         session.clients[clientId].ws = ws;
+        ws.id = clientId;
         ws.send(JSON.stringify({action: 'reconnect'}));
-        return true;
+        return "recconnected";
     } else if (clientId != '' && session.clients[clientId] !== undefined && session.clients[clientId].ws.readyState === ws.OPEN){
         console.log(`Client ${clientId} already connected`);
         ws.send(JSON.stringify({action: 'error', payload: 'Already connected'}));
         ws.close();
-        return true
+        return "error"
     }
-    return false;
+    ws.send(JSON.stringify({action: 'error', payload: 'Already started'}));
+    return "error";
 }
 
 function init_connection_controller(ws, sessionId, token, session){
@@ -72,7 +80,7 @@ function generate_code(){
     for (let i = 0; i < 6; i++) {
         code += characters.charAt(Math.floor(Math.random() * characters.length));
     }
-    return code;
+    return "A";
 }
 
 module.exports = { init_connection_player, init_connection_controller, check_controller_token };

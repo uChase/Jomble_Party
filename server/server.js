@@ -19,8 +19,9 @@ wss.on('connection', (ws, req) => {
     const params = new URLSearchParams(req.url.split('?')[1]);
     let sessionId = params.get('sessionId');
     let clientId = params.get('clientId');
-    const token = params.get('token');
+    let token = params.get('token');
 
+    //CONTROLLER COMMUNICATION
     if (token !== null){
         console.log('Controller connection attempted')
         let code = init_connection_controller(ws, sessionId, token, sessions[sessionId]);
@@ -28,7 +29,7 @@ wss.on('connection', (ws, req) => {
             return;
         }
         if (code != 'recconnected'){
-            sessions[code] = {controller: {ws: ws,}, clients: {}};
+            sessions[code] = {controller: {ws: ws,}, clients: {}, started: false};
         }
 
 
@@ -43,9 +44,27 @@ wss.on('connection', (ws, req) => {
         })
         
         
-    } else {
+    } 
+    else //PLAYER COMMUNICATION
+    {
         console.log('Player connection attempted')
-        init_connection_player(ws, sessionId, clientId, sessions[sessionId]);
+        if(!init_connection_player(ws, sessionId, clientId, sessions[sessionId]))
+        {
+            return;
+        }
+
+        ws.on('error', () => {
+            console.log(`Player with id ${ws.id} error`)
+        });
+
+        ws.on('close', () => {
+            console.log(`Player with id ${ws.id} disconnected`)
+            if(!sessions[sessionId].started && sessions[sessionId].clients[ws.id] !== undefined){
+                delete sessions[sessionId].clients[ws.id];
+            }
+        });
+
+
     }
 })
 
