@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { check_controller_token } = require('./check_tokens');
 
 
-function init_connection_player(ws, sessionId, clientId, session)
+function init_connection_player(ws, sessionId, clientId, session, uname)
 {
     if (session === undefined){
         console.log(`Session ${sessionId} not found`);
@@ -19,9 +19,10 @@ function init_connection_player(ws, sessionId, clientId, session)
     }
     clientId = uuidv4();
     ws.id = clientId;
-    session.clients[clientId] = {ws: ws};
-    console.log("Client connected at " + sessionId + " with id " + clientId)
+    session.clients[clientId] = {ws: ws, name: uname};
+    console.log("Client connected at " + sessionId + " with id " + clientId + " and name " + uname)
     ws.send(JSON.stringify({action: 'connected', payload: [clientId, sessionId]}));
+    session.controller.ws.send(JSON.stringify({action: 'new_client', clientId: clientId, payload: uname}));
     return true
 }
 

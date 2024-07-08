@@ -2,15 +2,29 @@ import React, { useState, useEffect, useContext } from "react";
 import { WebSocketContext } from '../WebSocketContext';
 
 export default function JoinPage() {
-    const { connected, sessionId, joinSession, setMessage, sendMessage, messages, players, error } = useContext(WebSocketContext);
+    const { connected, sessionId, joinSession, setMessage, sendMessage, messages, players, error, setError } = useContext(WebSocketContext);
     const [localSessionId, setLocalSessionId] = useState('');
+    const [localName, setLocalName] = useState('');
 
     if (connected) {
         return;
     }
 
     const handleJoin = () => {
-        joinSession(localSessionId);
+        // if (localSessionId.length !== 6) {
+        //     setError('Session ID must be 6 characters long');
+        //     return;
+        // }
+        if (localName.length === 0) {
+            setError('Name cannot be empty');
+            return;
+        }
+        if (localName.length > 10) {
+            setError('Name cannot be longer than 10 characters');
+            return;
+        }
+        setError('');
+        joinSession(localSessionId, localName);
     };
 
 
@@ -23,8 +37,17 @@ export default function JoinPage() {
             type="text"
             value={localSessionId}
             onChange={(e) => setLocalSessionId(e.target.value)}
-            placeholder="Session ID"
+            placeholder="Session Code"
             className="p-2 border border-gray-300 rounded-md mb-2"
+            maxLength={6}
+        />
+        <input
+            type="text"
+            value={localName}
+            onChange={(e) => setLocalName(e.target.value)}
+            placeholder="Name"
+            className="p-2 border border-gray-300 rounded-md mb-2"
+            maxLength={10}
         />
         <button
             onClick={handleJoin}

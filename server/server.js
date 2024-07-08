@@ -3,6 +3,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
 const { init_connection_player, init_connection_controller } = require('./socket_logic/setup');
+const { controller_message_handler } = require('./socket_logic/controller/message');
 const app = express();
 app.use(cors());
 
@@ -20,6 +21,7 @@ wss.on('connection', (ws, req) => {
     let sessionId = params.get('sessionId');
     let clientId = params.get('clientId');
     let token = params.get('token');
+    let uname = params.get('uname');
 
     //CONTROLLER COMMUNICATION
     if (token !== null){
@@ -31,6 +33,8 @@ wss.on('connection', (ws, req) => {
         if (code != 'recconnected'){
             sessions[code] = {controller: {ws: ws,}, clients: {}, started: false};
         }
+
+        controller_message_handler(ws, sessions[code]);
 
 
         ws.on('close', () => {
@@ -48,7 +52,7 @@ wss.on('connection', (ws, req) => {
     else //PLAYER COMMUNICATION
     {
         console.log('Player connection attempted')
-        if(!init_connection_player(ws, sessionId, clientId, sessions[sessionId]))
+        if(!init_connection_player(ws, sessionId, clientId, sessions[sessionId], uname))
         {
             return;
         }
@@ -58,8 +62,9 @@ wss.on('connection', (ws, req) => {
         });
 
         ws.on('close', () => {
-            console.log(`Player with id ${ws.id} disconnected`)
-            if(!sessions[sessionId].started && sessions[sessionId].clients[ws.id] !== undefined){
+            console.log(`Player with id ${ws?.id} and name ${sessions[sessionId]?.clients[ws?.id]?.name} disconnected `)
+            if(sessions[sessionId] !== undefined && !sessions[sessionId]?.started && sessions[sessionId]?.clients[ws.id] !== undefined){
+                sessions[sessionId].controller.ws.send(JSON.stringify({action: 'lobby_disconnect', clientId: ws?.id, }));
                 delete sessions[sessionId].clients[ws.id];
             }
         });

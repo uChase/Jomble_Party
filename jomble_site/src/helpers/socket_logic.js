@@ -5,8 +5,9 @@ let onMessageHandler;
 let onErrorHandler;
 let onCloseHandler;
 
-export const initializeWebSocket = (sessionId, onOpen, onMessage, onError, onClose) => {
+export const initializeWebSocket = (sessionId, onOpen, onMessage, onError, onClose, uname) => {
     let cliId = '';
+    console.log(uname)
     if (getLocalStorage('PrevSession') !== null) {
         if (sessionId === getLocalStorage('PrevSession').split(',')[1]) {
             console.log('Reconnecting to previous session');
@@ -14,7 +15,7 @@ export const initializeWebSocket = (sessionId, onOpen, onMessage, onError, onClo
         }
     }
 
-    socket = new WebSocket(`ws://192.168.68.93:8080?sessionId=${sessionId}&clientId=${cliId}`);
+    socket = new WebSocket(`ws://192.168.68.93:8080?sessionId=${sessionId}&clientId=${cliId}&uname=${uname}`);
 
     socket.onopen = () => {
         console.log('WebSocket connection opened');

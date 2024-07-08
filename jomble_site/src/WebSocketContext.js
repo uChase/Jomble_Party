@@ -12,8 +12,8 @@ export const WebSocketProvider = ({ children }) => {
     const [players, setPlayers] = useState([]);
     const [error, setError] = useState('');
 
-    const joinSession = (sessionId) => {
-        initializeWebSocket(sessionId, handleOpen, handleMessage, handleError, handleClose);
+    const joinSession = (sessionId, uname) => {
+        initializeWebSocket(sessionId, handleOpen, handleMessage, handleError, handleClose, uname);
         setSessionId(sessionId);
     };
 
@@ -74,6 +74,7 @@ export const WebSocketProvider = ({ children }) => {
                 setMessage,
                 joinSession,
                 sendMessage,
+                setError
             }}
         >
             {children}
