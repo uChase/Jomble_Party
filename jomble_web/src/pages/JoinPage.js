@@ -6,7 +6,7 @@ export default function JoinPage() {
     const [localSessionId, setLocalSessionId] = useState('');
     const [localName, setLocalName] = useState('');
 
-    if (socketConnected && rtcConnected) {
+    if (rtcConnected) {
         return;
     }
 

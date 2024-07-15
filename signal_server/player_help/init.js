@@ -16,6 +16,7 @@ function init_player(ws, sessions, uname, sessionId, clientId)
     clientId = uuidv4();
     ws.uname = uname;
     ws.id = clientId;
+    ws.RTCConnected = false;
 
     sessions[sessionId].clients[clientId] = ws;
 
@@ -35,7 +36,8 @@ function init_player(ws, sessions, uname, sessionId, clientId)
 
     ws.on('close', () => {
         console.log('Player connection closed');
-        if(sessions[sessionId] != null && !sessions[sessionId]?.isStarted)
+
+        if(sessions[sessionId] != null && !sessions[sessionId]?.isStarted )
             delete sessions[sessionId].clients[clientId];
     });
 

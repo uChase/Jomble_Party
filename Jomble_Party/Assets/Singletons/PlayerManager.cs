@@ -39,6 +39,11 @@ public class PlayerManager : MonoBehaviour
         return playerDataScriptableObject.GetPlayer(playerId);
     }
 
+    public int GetPlayerIndex(string playerId)
+    {
+        return playerDataScriptableObject.GetPlayerIndex(playerId);
+    }
+
     public PlayerData[] GetAllPlayers()
     {
         return playerDataScriptableObject.Players;

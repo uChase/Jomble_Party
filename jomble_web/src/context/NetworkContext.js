@@ -10,7 +10,9 @@ export const NetworkContextProvider = ({ children }) => {
   const [sessionId, setSessionId] = useState("");
   const [error, setError] = useState("");
   const [clientId, setClientId] = useState(""); 
-  const [dataChannel, setDataChannel] = useState(null);
+  const [isHost, setIsHost] = useState(false);
+  const [uname, setUname] = useState("");
+  const dataChannel = useRef(null);
   const peerConnectionRef = useRef(null);
   const candidateQueueRef = useRef([]);  // Candidate queue
 
@@ -25,6 +27,7 @@ export const NetworkContextProvider = ({ children }) => {
       handleClose,
       uname
     );
+    setUname(uname);
     setSessionId(sessionId);
   };
 
@@ -42,12 +45,10 @@ export const NetworkContextProvider = ({ children }) => {
         closeWebSocket();
         break;
       case "offer":
-        await handleOffer(data.payload, peerConnectionRef, setDataChannel, candidateQueueRef);
-        // setRtcConnected(true);
+        await handleOffer(data.payload, peerConnectionRef, dataChannel, candidateQueueRef, onChannelMessage, onChannelError, onChannelClose, onChannelOpen);
         break;
       case "answer":
         await handleAnswer(data.payload, peerConnectionRef);
-        // setRtcConnected(true);
         break;
       case "candidate":
         await handleCandidate(data.payload, peerConnectionRef, candidateQueueRef);
@@ -56,6 +57,41 @@ export const NetworkContextProvider = ({ children }) => {
         console.error("Unknown action:", data.type);
     }
   };
+
+  const onChannelMessage = (event) => {
+    console.log('Received Message:', event.data);
+    let message = JSON.parse(event.data);
+    if(message.type === 'Connected') {
+      setRtcConnected(true);
+    }
+    if(message.type == 'Host')
+    {
+      setIsHost(true);
+    }
+
+  }
+
+  const onChannelError = (error) => {
+    console.error("Data channel error:", error);
+    setRtcConnected(false);
+  }
+
+  const onChannelClose = () => {
+    console.log('Data channel closed');
+    setRtcConnected(false);
+  }
+
+  const onChannelOpen = () => {
+    console.log('Data channel opened');
+    let message = {
+      type: 'Connected'
+    }
+    dataChannel.current.send(JSON.stringify(message));
+  }
+
+  const sendChannelMessage = (message) => {
+    dataChannel.current.send(JSON.stringify(message))
+  }
 
   const handleError = (error) => {
     console.error("WebSocket error:", error);
@@ -82,7 +118,13 @@ export const NetworkContextProvider = ({ children }) => {
         sessionId,
         joinSession,
         error,
-        setError
+        setError,
+        dataChannel,
+        sendChannelMessage,
+        uname,
+        peerConnectionRef,
+        setRtcConnected,
+        isHost
       }}
     >
       {children}

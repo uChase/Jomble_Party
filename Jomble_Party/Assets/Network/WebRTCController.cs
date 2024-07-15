@@ -13,6 +13,11 @@ public class WebRTCController : MonoBehaviour
     private readonly string serverUrl = "ws://localhost:8080?joinType=controller"; 
     private readonly string token = "SECURE_CONTROLLER_TOKEN";
     public MainThreadDispatcher mainThreadDispatcher;
+    public string gameCode = "";
+    public delegate void MessageReceivedEventHandler(string type, string message, string id);
+    public event MessageReceivedEventHandler OnMessageReceived;
+    public delegate void GameCodeReceivedEventHandler(string gameCode);
+    public event GameCodeReceivedEventHandler OnGameCodeReceived;
 
 
     void Awake()
@@ -30,10 +35,9 @@ public class WebRTCController : MonoBehaviour
 
     void Start()
     {
-        InitSocket();
     }
 
-    private void InitSocket()
+    public void InitSocket()
     {
         signalingWebSocket = new WebSocket(serverUrl);
         signalingWebSocket.OnMessage += OnSocketMessage;
@@ -41,7 +45,7 @@ public class WebRTCController : MonoBehaviour
         signalingWebSocket.OnOpen += (sender, e) =>
         {
             Debug.Log("Socket opened");
-            SendCreateSessionMessage();
+            // SendCreateSessionMessage();
         };
 
         signalingWebSocket.OnError += (sender, e) =>
@@ -63,7 +67,8 @@ public class WebRTCController : MonoBehaviour
         switch (message.type)
         {
             case "session_created":
-                Debug.Log("Session created: " + message.payload);
+                gameCode = message.payload;
+                mainThreadDispatcher.Enqueue(() =>OnGameCodeReceived?.Invoke(gameCode));
                 break;
             case "player_joined":
                 CreatePeerConnection(message.clientId, message.payload);
@@ -113,7 +118,18 @@ public class WebRTCController : MonoBehaviour
 
         player.peerConnection = new RTCPeerConnection(ref config)
         {
-            OnIceCandidate = (candidate) => SendIceCandidate(candidate, clientId)
+            OnIceCandidate = (candidate) => SendIceCandidate(candidate, clientId),
+            OnConnectionStateChange = (state) => {
+                //this is for lobby
+                if (state == RTCPeerConnectionState.Failed)
+                {
+                    player.dataChannel?.Close();
+                    player.peerConnection?.Close();
+                    player.peerConnection?.Dispose();
+                    string message =  JsonUtility.ToJson(new DataChannelMessage { type = "Disconnected", message = "" });
+                    ReceivedMessageFromPlayer(System.Text.Encoding.UTF8.GetBytes(message), player.Id);
+                }
+            },
         };
     }
 
@@ -126,11 +142,109 @@ public class WebRTCController : MonoBehaviour
         }
         player.dataChannel = player.peerConnection.CreateDataChannel("dataChannel");
         player.dataChannel.OnOpen = () => {
-            Debug.Log("Data Channel Open");
-            player.dataChannel.Send("Connected to data channel");
-            };
-        player.dataChannel.OnMessage = (message) => Debug.Log("Received message: " + message);
-        player.dataChannel.OnClose = () => Debug.Log("Data Channel Closed with " + player.Name);
+            OnChannelOpen(player);
+        };
+        player.dataChannel.OnMessage = (message) => ReceivedMessageFromPlayer(message, player.Id);
+        player.dataChannel.OnClose = () => {
+            Debug.Log("Data Channel Closed with " + player.Name);
+            string message = JsonUtility.ToJson(new DataChannelMessage { type = "Disconnected", message = "" });
+            PassHost(player);
+            //only delets data if game hasnt started since this will delete in ui_manager
+            ReceivedMessageFromPlayer(System.Text.Encoding.UTF8.GetBytes(message), player.Id);
+        };
+        player.dataChannel.OnError = (error) => {
+            Debug.Log("Data Channel Closed with " + player.Name);
+            string message = JsonUtility.ToJson(new DataChannelMessage { type = "Disconnected", message = "" });
+            PassHost(player);
+            //only delets data if game hasnt started since this will delete in ui_manager
+            ReceivedMessageFromPlayer(System.Text.Encoding.UTF8.GetBytes(message), player.Id);
+        };
+    }
+
+    private void OnChannelOpen(PlayerData player)
+    {
+        Debug.Log("Data Channel Open");
+        SendMessageToPlayer(new DataChannelMessage { type = "Connected", message = player.Id }, player.Id);
+        PlayerData [] players = playerManager.GetAllPlayers();
+        bool isHostTaken = false;
+        foreach (var p in players)
+        {
+            if (p == null)
+            {
+                continue;
+            }
+            if (p.Id != player.Id && p.IsHost)
+            {
+                isHostTaken = true;
+            }
+        }
+        if(isHostTaken == false)
+        {
+            player.IsHost = true;
+            SendMessageToPlayer(new DataChannelMessage { type = "Host", message = "" }, player.Id);
+        }
+    }
+
+    private void PassHost(PlayerData player)
+    {
+        if(player.IsHost == true)
+        {
+            PlayerData [] players = playerManager.GetAllPlayers();
+            foreach (var p in players)
+            {
+                if (p == null)
+                {
+                    continue;
+                }
+                if (p.Id != player.Id)
+                {
+                    p.IsHost = true;
+                    SendMessageToPlayer(new DataChannelMessage { type = "Host", message = "" }, p.Id);
+                    return;
+                }
+            }
+        }
+        return;
+    }
+
+    private void ReceivedMessageFromPlayer(byte[] message, string id)
+    {
+        string messageJsonString = System.Text.Encoding.UTF8.GetString(message);
+        string  type = JsonUtility.FromJson<DataChannelMessage>(messageJsonString).type;
+        string messageString = JsonUtility.FromJson<DataChannelMessage>(messageJsonString).message;
+        Debug.Log("Received message from " + id + ": " + type);
+
+        OnMessageReceived?.Invoke(type, messageString, id);
+
+    }
+
+    
+    public void SendMessageToAllPlayers(DataChannelMessage message)
+    {
+        var json = JsonUtility.ToJson(message);
+        foreach (var player in playerManager.GetAllPlayers())
+        {
+            if (player == null)
+            {
+                continue;
+            }
+            if(player.dataChannel.ReadyState == RTCDataChannelState.Open)
+            {
+                player.dataChannel.Send(json);
+            }
+        }
+    }
+
+    public void SendMessageToPlayer(DataChannelMessage message, string clientId)
+    {
+        var json = JsonUtility.ToJson(message);
+        var player = playerManager.GetPlayer(clientId);
+        if (player == null)
+        {
+            Debug.LogError("Player not found");
+            return;
+        }
+        player.dataChannel.Send(json);
     }
     
 
@@ -197,6 +311,12 @@ public class WebRTCController : MonoBehaviour
     }
 
     void OnDestroy()
+    {
+        signalingWebSocket?.Close();
+        ClosePeerConnections();
+    }
+
+    public void CloseConnections()
     {
         signalingWebSocket?.Close();
         ClosePeerConnections();
@@ -288,6 +408,12 @@ public class WebRTCController : MonoBehaviour
                 sdpMLineIndex = this.sdpMLineIndex
             });
         }
+    }
+
+    public class DataChannelMessage
+    {
+        public string type;
+        public string message;
     }
 
 }

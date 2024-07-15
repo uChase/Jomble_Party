@@ -5,14 +5,6 @@ function handle_controller_message(ws, message, sessions, sessionId){
         case 'create_session':
             create_session(ws, message.payload, sessions, sessionId);
             break;
-        case 'end_session':
-            if(!validation_check(ws))
-            {
-                return;
-            }
-            // end_session(ws, sessions);
-            break;
-
         case 'offer':
             if(!validation_check(ws))
             {
@@ -76,7 +68,11 @@ function offer(ws, message, sessions, sessionId){
 }
 
 function candidate(message, sessions, sessionId){
-    sessions[sessionId].clients[message.clientId].send(JSON.stringify({type: 'candidate', payload: message.candidate}));
+    sessions[sessionId]?.clients[message.clientId]?.send(JSON.stringify({type: 'candidate', payload: message.candidate}));
 }
+
+
+
+
 
 module.exports = {handle_controller_message};

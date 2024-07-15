@@ -43,6 +43,18 @@ public class PlayerDataScriptableObject : ScriptableObject
         return Players.FirstOrDefault(player => player != null && player.Id == playerId);
     }
 
+    public int GetPlayerIndex(string playerId)
+    {
+        for (int i = 0; i < Players.Length; i++)
+        {
+            if (Players[i] != null && Players[i].Id == playerId)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public void ClearPlayers()
     {
         for (int i = 0; i < Players.Length; i++)
@@ -59,6 +71,8 @@ public class PlayerData
     public string Name;
     public RTCPeerConnection peerConnection;
     public RTCDataChannel dataChannel;
+    public bool IsHost = false;
+    public int AvatarId = 0;
 
     public PlayerData(string id, string name)
     {
@@ -66,10 +80,6 @@ public class PlayerData
         Name = name;
     }
 
-    public void AddConnection(RTCPeerConnection connection)
-    {
-        peerConnection = connection;
-    }
 
     public override String ToString()
     {

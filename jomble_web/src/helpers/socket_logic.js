@@ -3,7 +3,7 @@ let socket;
 export const initializeWebSocket = (sessionId, onOpen, onMessage, onError, onClose, uname) => {
     //ADD RECONNECTION LATER AND CLIENT ID TO URL
 
-    socket = new WebSocket('ws://localhost:8080?sessionId=' + sessionId + '&joinType=player&uname=' + uname);
+    socket = new WebSocket('ws://192.168.68.91:8080?sessionId=' + sessionId + '&joinType=player&uname=' + uname);
 
     socket.onopen = () => {
         console.log('WebSocket connection opened');

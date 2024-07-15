@@ -1,7 +1,7 @@
 import adapter from 'webrtc-adapter';
-import { sendMessage } from './socket_logic';
+import { closeWebSocket, sendMessage } from './socket_logic';
 
-const createPeerConnection = (setDataChannel) => {
+const createPeerConnection = (dataChannel, onChannelMessage, onChannelError, onChannelClose, onChannelOpen) => {
     const config = {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' }
@@ -16,16 +16,27 @@ const createPeerConnection = (setDataChannel) => {
 
     pc.ondatachannel = (event) => {
       const channel = event.channel;
-      channel.onmessage = (e) => console.log('Received Message:', e.data);
-      setDataChannel(channel);
+      channel.onmessage = onChannelMessage
+      channel.onerror = onChannelError;
+      channel.onclose = onChannelClose;
+      channel.onopen = onChannelOpen
+
+      dataChannel.current = channel;
     };
+    pc.onicegatheringstatechange = () => {
+      if (pc.iceGatheringState === 'complete') {
+        closeWebSocket()
+      }
+    };
+
 
     return pc;
   };
 
-  export const handleOffer = async (offer, peerConnectionRef, setDataChannel, candidateQueueRef) => {
+
+  export const handleOffer = async (offer, peerConnectionRef, dataChannel, candidateQueueRef, onChannelMessage, onChannelError, onChannelClose, onChannelOpen) => {
     
-    peerConnectionRef.current = createPeerConnection(setDataChannel);
+    peerConnectionRef.current = createPeerConnection(dataChannel, onChannelMessage, onChannelError, onChannelClose, onChannelOpen);
     await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await peerConnectionRef.current.createAnswer();
     await peerConnectionRef.current.setLocalDescription(answer);

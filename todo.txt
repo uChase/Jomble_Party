@@ -1,0 +1,5 @@
+Reconnection logic
+Unity client sending kick requests based on invalid users (repeat names and such)
+
+
+//FIRST THING TO DO TOMMOROW IS MAKE IT SO WHEN YOU JOIN YOU GET INFO ON SELECTED CHARACTERS
