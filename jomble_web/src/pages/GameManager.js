@@ -2,10 +2,13 @@ import React, { useContext, useState } from 'react'
 import { NetworkContext } from '../context/NetworkContext';
 import { PlayerContextProvider } from '../context/PlayerContext';
 import ChooseAvatar from './ChooseAvatar';
+import { GameStateContext } from '../context/GameStateContext';
 
 
 function GameManager() {
     const {rtcConnected, peerConnectionRef, setRtcConnected } = useContext(NetworkContext);
+    const {gameState} = useContext(GameStateContext)
+
 
     if(!rtcConnected) {
         return
@@ -21,9 +24,19 @@ function GameManager() {
 
     return (
     <PlayerContextProvider>
-        <ChooseAvatar />
+        <Screen gameState={gameState} />
     </PlayerContextProvider>
     )
 }
 
 export default GameManager
+
+const Screen = ({gameState}) => {
+
+    switch(gameState) {
+        case "lobby":
+            return <ChooseAvatar />
+        default:
+            return <div>Invalid game state</div>
+    }
+}

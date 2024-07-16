@@ -7,11 +7,13 @@ function ChooseAvatar() {
   const [chosenAvatars, setChosenAvatars] = useState([]);
   const {rtcConnected, dataChannel, sendChannelMessage, uname, isHost } = useContext(NetworkContext);
   const { setPlayerAvatar, setPlayerName, setIsHost } = useContext(PlayerContext);
+  const [localHost, setLocalHost] = useState(false);
 
   useEffect(() => {
     if (rtcConnected) {
       setPlayerName(uname);
       setIsHost(isHost);
+      setLocalHost(isHost);
       dataChannel.current.onmessage = (event) => {
         let message = JSON.parse(event.data);
         console.log("Received Message:", message);
@@ -22,7 +24,9 @@ function ChooseAvatar() {
         } else if (message.type === "took_avatar") {
           let list = JSON.parse(message.message)['list'];
           setChosenAvatars(list);
-        } 
+        }  else if (message.type === "Host") {
+          setLocalHost(true);
+        }
       
       }
     }
@@ -72,6 +76,13 @@ function ChooseAvatar() {
             {listAvatarId}
           </button>
         ))}
+      </div>
+      <div>
+        {localHost ?
+        <button className="mt-8 bg-blue-500 text-white text-2xl font-bold px-4 py-2 rounded-lg hover:bg-blue-600" onClick={() => sendChannelMessage({ type: "start_game", message: "" })}>
+          Start Game
+        </button>
+        : null }
       </div>
     </div>
   );
